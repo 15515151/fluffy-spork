@@ -30,22 +30,24 @@
 
   
    # --------------- 配置区域 ---------------
+   ```powershell
    $interfaceName = "以太网"          # 通过 Get-NetAdapter 查询的网卡名称
    $logFile = "C:\ip_logs\last_ipv6.txt"   # 地址记录文件路径
    $exitLogFile = "C:\ip_logs\exit_log.txt" # 运行日志路径
    $notificationMethod = "email"          # 通知方式：telegram / email / pushbullet
+   ```
    2. **通知方式配置**  
    根据选择的通知方式配置对应参数：
 
    - 📧 **邮件通知**  
-    
+     ```powershell
      $emailFrom = "sender@example.com"    # 发件邮箱
      $emailTo = "receiver@example.com"    # 收件邮箱
      $smtpServer = "smtp.example.com"     # SMTP服务器
      $smtpPort = 587                      # 端口号
      $emailPassword = "your_password"     # 邮箱密码
      $enableSSL = $true                   # SSL加密
-   
+     ```
 
    - ✈️ **Telegram 通知**  
      [如何获取Token](https://core.telegram.org/bots#6-botfather)  
