@@ -38,7 +38,7 @@
    根据选择的通知方式配置对应参数：
 
    - 📧 **邮件通知**  
-     ```powershell
+    
      $emailFrom = "sender@example.com"    # 发件邮箱
      $emailTo = "receiver@example.com"    # 收件邮箱
      $smtpServer = "smtp.example.com"     # SMTP服务器
