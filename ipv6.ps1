@@ -19,71 +19,67 @@ $smtpPort = 587                         # 端口（不启用SSL时通常为25，
 $emailPassword = "YOUR_EMAIL_PASSWORD"             # 邮箱密码
 $enableSSL = $false                     # SSL开关（根据邮箱支持性设置：$true 或 $false）
 
+# ---------------------- 日志函数 ----------------------
+function Write-TimestampLog {
+    param(
+        [string]$Message
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "$timestamp | $Message" | Out-File $exitLogFile -Append
+}
 
+# 创建日志目录
 $logDirectory = Split-Path $logFile -Parent
 if (-not (Test-Path $logDirectory)) {
     New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 }
 
-
 if (-not (Test-Path $exitLogFile)) {
     New-Item -ItemType File -Path $exitLogFile -Force | Out-Null
 }
 
-#脚本逻辑
+# 脚本逻辑
 try {
     # 获取当前IPv6地址
     $currentIPv6 = (Get-NetIPAddress -AddressFamily IPv6 -InterfaceAlias $interfaceName | Where-Object {
         $_.PrefixOrigin -eq 'RouterAdvertisement' -and $_.SuffixOrigin -eq 'Link'
     }).IPAddress
 
-    
     if (-not $currentIPv6) {
         $exitReason = "未获取到IPv6地址，脚本退出。"
-        $exitReason | Out-File $exitLogFile -Append
+        Write-TimestampLog $exitReason
         exit
     }
 
-    
     $lastIPv6 = $null
     if (Test-Path $logFile) {
         $lastIPv6 = Get-Content $logFile -ErrorAction SilentlyContinue
     }
 
-    
     if ($currentIPv6 -ne $lastIPv6) {
-        
         $notificationSuccess = $false
         switch ($notificationMethod) {
             "email" {
                 try {
-                    # 临时忽略证书验证
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                    
                     $securePassword = ConvertTo-SecureString $emailPassword -AsPlainText -Force
                     $credential = New-Object System.Management.Automation.PSCredential ($emailFrom, $securePassword)
-                    
-                    
                     $encoding = [System.Text.Encoding]::UTF8
                     
                     Send-MailMessage -From $emailFrom -To $emailTo -Subject "IPv6地址更新通知" -Body "新地址：$currentIPv6" `
                         -SmtpServer $smtpServer -Port $smtpPort -UseSsl -Credential $credential -Encoding $encoding -ErrorAction Stop
                     $notificationSuccess = $true
                 } catch {
-                    $exitReason = "邮件发送失败：$_"
-                    $exitReason | Out-File $exitLogFile -Append
+                    $errorMsg = "邮件发送失败：$($_.Exception.Message)"
+                    Write-TimestampLog $errorMsg
                 } finally {
-                    # 恢复证书验证
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
                 }
-                
-                # 记录通知结果
+
                 if ($notificationSuccess) {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，通知已通过email成功发送。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，通知已通过email成功发送。"
                 } else {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，但通知通过email发送失败。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，但通知通过email发送失败。"
                 }
             }
             "telegram" {
@@ -97,17 +93,14 @@ try {
                     Invoke-RestMethod -Uri $apiUrl -Method Post -Body $parameters
                     $notificationSuccess = $true
                 } catch {
-                    $exitReason = "Telegram消息发送失败：$_"
-                    $exitReason | Out-File $exitLogFile -Append
+                    $errorMsg = "Telegram消息发送失败：$($_.Exception.Message)"
+                    Write-TimestampLog $errorMsg
                 }
-                
-                
+
                 if ($notificationSuccess) {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，通知已通过telegram成功发送。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，通知已通过telegram成功发送。"
                 } else {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，但通知通过telegram发送失败。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，但通知通过telegram发送失败。"
                 }
             }
             "pushbullet" {
@@ -126,36 +119,30 @@ try {
                     Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
                     $notificationSuccess = $true
                 } catch {
-                    $exitReason = "Pushbullet消息发送失败：$_"
-                    $exitReason | Out-File $exitLogFile -Append
+                    $errorMsg = "Pushbullet消息发送失败：$($_.Exception.Message)"
+                    Write-TimestampLog $errorMsg
                 }
-                
-                
+
                 if ($notificationSuccess) {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，通知已通过pushbullet成功发送。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，通知已通过pushbullet成功发送。"
                 } else {
-                    $logMessage = "IPv6地址已更新为：$currentIPv6，但通知通过pushbullet发送失败。"
-                    $logMessage | Out-File $exitLogFile -Append
+                    Write-TimestampLog "IPv6地址已更新为：$currentIPv6，但通知通过pushbullet发送失败。"
                 }
             }
             default {
-                $exitReason = "未知的通知方式：$notificationMethod"
-                $exitReason | Out-File $exitLogFile -Append
-                $logMessage = "IPv6地址已更新为：$currentIPv6，但通知方式未知，无法发送。"
-                $logMessage | Out-File $exitLogFile -Append
+                $errorMsg = "未知的通知方式：$notificationMethod"
+                Write-TimestampLog $errorMsg
+                Write-TimestampLog "IPv6地址已更新为：$currentIPv6，但通知方式未知，无法发送。"
             }
         }
 
         # 记录新地址到文件
         $currentIPv6 | Out-File $logFile -Force
     } else {
-        #IPv6地址未变化
-        $logMessage = "IPv6地址未发生变化，当前地址：$currentIPv6。"
-        $logMessage | Out-File $exitLogFile -Append
+        Write-TimestampLog "IPv6地址未发生变化，当前地址：$currentIPv6。"
     }
 } catch {
-    $exitReason = "脚本运行时发生错误：$_"
-    $exitReason | Out-File $exitLogFile -Append
+    $errorMsg = "脚本运行时发生错误：$($_.Exception.Message)"
+    Write-TimestampLog $errorMsg
     exit
 }
