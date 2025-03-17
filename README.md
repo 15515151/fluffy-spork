@@ -28,7 +28,7 @@
 1. **基础配置**  
    用文本编辑器打开脚本，修改以下参数：
 
-   ```powershell
+  
    # --------------- 配置区域 ---------------
    $interfaceName = "以太网"          # 通过 Get-NetAdapter 查询的网卡名称
    $logFile = "C:\ip_logs\last_ipv6.txt"   # 地址记录文件路径
@@ -45,7 +45,7 @@
      $smtpPort = 587                      # 端口号
      $emailPassword = "your_password"     # 邮箱密码
      $enableSSL = $true                   # SSL加密
-     ```
+   
 
    - ✈️ **Telegram 通知**  
      [如何获取Token](https://core.telegram.org/bots#6-botfather)  
